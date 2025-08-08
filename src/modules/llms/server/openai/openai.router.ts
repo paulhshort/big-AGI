@@ -536,10 +536,14 @@ export function openAIAccess(access: OpenAIAccessSchema, modelRefId: string | nu
         throw new Error('Missing Azure API Key or Host. Add it on the UI (Models Setup) or server side (your deployment).');
 
       let url = azureHost;
-      if (apiPath.startsWith('/v1/')) {
+      if (apiPath === '/v1/responses' && modelRefId?.toLowerCase().includes('gpt-5')) {
+        url += `/openai/v1/responses?api-version=preview`;
+      } else if (apiPath.startsWith('/v1/')) {
         if (!modelRefId)
           throw new Error('Azure OpenAI API needs a deployment id');
-        url += `/openai/deployments/${modelRefId}/${apiPath.replace('/v1/', '')}?api-version=2025-02-01-preview`;
+        // Non-Responses GPT-5 family still uses the 2025-01-01-preview API version
+        const apiVersion = modelRefId.toLowerCase().includes('gpt-5') ? '2025-01-01-preview' : '2025-02-01-preview';
+        url += `/openai/deployments/${modelRefId}/${apiPath.replace('/v1/', '')}?api-version=${apiVersion}`;
       } else if (apiPath.startsWith('/openai/deployments'))
         url += apiPath;
       else
