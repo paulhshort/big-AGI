@@ -55,7 +55,7 @@ export function useCapabilityTextToImage(): CapabilityTextToImage {
     const mayWork = providers.some(p => p.configured);
     const resolvedDalleModelId = resolveDalleModelId(dalleModelId);
     const family = getImageModelFamily(resolvedDalleModelId);
-    const mayEdit = activeProvider?.vendor === 'openai' && family === 'gpt-image';
+    const mayEdit = (!!activeProvider && ['openai', 'azure'].includes(activeProvider.vendor)) && family === 'gpt-image';
     return {
       mayWork,
       mayEdit,
@@ -106,8 +106,9 @@ async function _t2iGenerateImagesOrThrow({ providerId, vendor }: TextToImageProv
       throw new Error('LocalAI t2i integration is not yet available');
 
     case 'openai':
+    case 'azure':
       if (!providerId)
-        throw new Error('No OpenAI Model Service configured for TextToImage');
+        throw new Error('No OpenAI-compatible Model Service configured for TextToImage');
       return await openAIGenerateImagesOrThrow(providerId, prompt, aixInlineImageParts, count);
 
     case 'xai':
@@ -199,7 +200,7 @@ interface T2ILlmsModelServices {
 
 function _findLlmsT2IServices(llms: ReadonlyArray<DLLM>, services: ReadonlyArray<DModelsService>) {
   return services
-    .filter(s => (s.vId === 'openai' || (T2I_ENABLE_LOCAL_AI && s.vId === 'localai')))
+    .filter(s => (s.vId === 'openai' || s.vId === 'azure' || (T2I_ENABLE_LOCAL_AI && s.vId === 'localai')))
     .map((s): T2ILlmsModelServices => ({
       label: s.label,
       modelVendorId: s.vId,
@@ -212,6 +213,7 @@ function _findLlmsT2IServices(llms: ReadonlyArray<DLLM>, services: ReadonlyArray
 // Vendor priority system for auto-selection (lower number = higher priority)
 const T2I_VENDOR_PRIORITIES = {
   openai: 1,    // highest priority (mature, reliable)
+  azure: 1,     // Azure OpenAI parity with OpenAI
   gemini: 2,    // second (Google Imagen - future)
   xai: 3,       // third (Grok vision - future reference)
   localai: 9,   // lowest (experimental)
@@ -234,6 +236,17 @@ function _getTextToImageProviders(llmsModelServices: T2ILlmsModelServices[]) {
           description: 'OpenAI Image generation models',
           configured: hasAnyModels,
           vendor: 'openai',
+        });
+        break;
+
+      case 'azure':
+        providers.push({
+          providerId: modelServiceId,
+          label: label,
+          painter: openAIImageModelsCurrentGeneratorName(),
+          description: 'Azure OpenAI image generation models',
+          configured: hasAnyModels,
+          vendor: 'azure',
         });
         break;
 

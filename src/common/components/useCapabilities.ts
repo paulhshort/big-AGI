@@ -48,6 +48,7 @@ export interface TextToImageProvider {
 type TextToImageVendor =
   | 'gemini'
   | 'localai'
+  | 'azure'
   | 'openai'
   | 'xai'
   ;

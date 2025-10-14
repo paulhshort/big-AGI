@@ -29,7 +29,9 @@ export function DrawProviderConfigure(props: {
 
   const { ProviderConfig } = React.useMemo(() => {
     const provider = providers.find(provider => provider.providerId === activeProviderId);
-    const ProviderConfig: React.FC | null = provider?.vendor === 'openai' ? DallESettings : null;
+    const ProviderConfig: React.FC | null = (provider?.vendor === 'openai' || provider?.vendor === 'azure')
+      ? DallESettings
+      : null;
     return {
       ProviderConfig,
     };

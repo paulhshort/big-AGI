@@ -200,8 +200,28 @@ export function azureOpenAIAccess(access: OpenAIAccessSchema, modelRefId: string
       // console.log('[Azure] Using next-gen v1 API for Responses:', apiPath);
       break;
 
+    // Image generation APIs
+    case apiPath.startsWith('/v1/images/'):
+
+      if (server.apiEnableV1) {
+        const imageFunction = apiPath.replace('/v1/', ''); // e.g. 'images/generations'
+        apiPath = `/openai/v1/${imageFunction}`;
+        break;
+      }
+
+      if (!modelRefId)
+        throw new Error('Azure OpenAI API needs a deployment id');
+
+      {
+        const imageFunction = apiPath.replace('/v1/', '');
+        apiPath = `/openai/deployments/${modelRefId}/${imageFunction}?api-version=${server.versionAzureOpenAI}`;
+      }
+      break;
+
     // Chat Completions API, and other v1 APIs
-    case apiPath === '/v1/chat/completions' || apiPath === '/v1/responses' || apiPath.startsWith('/v1/'):
+    case apiPath === '/v1/chat/completions'
+      || apiPath === '/v1/responses'
+      || (apiPath.startsWith('/v1/') && !apiPath.startsWith('/v1/images/')):
 
       // require the model Id for traditional deployment-based routing
       if (!modelRefId)
@@ -218,6 +238,7 @@ export function azureOpenAIAccess(access: OpenAIAccessSchema, modelRefId: string
   return {
     headers: {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
       'api-key': azureKey,
     },
     url: azureBase + apiPath,
